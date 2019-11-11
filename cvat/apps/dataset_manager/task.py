@@ -34,6 +34,8 @@ _TASK_IMAGES_EXTRACTOR = '_cvat_task_images'
 _TASK_ANNO_EXTRACTOR = '_cvat_task_anno'
 _TASK_IMAGES_REMOTE_EXTRACTOR = 'cvat_rest_api_task_images'
 
+EXPORT_FORMAT_DATUMARO_PROJECT = "datumaro_project"
+EXPORT_FORMAT_DATUMARO_REMOTE_PROJECT = "datumaro_project_remote"
 
 class TaskProject:
     @staticmethod
@@ -286,8 +288,7 @@ class TaskProject:
             ])
 
 
-DEFAULT_FORMAT = "datumaro_project"
-DEFAULT_FORMAT_REMOTE = "datumaro_project_remote"
+DEFAULT_FORMAT = EXPORT_FORMAT_DATUMARO_PROJECT
 DEFAULT_CACHE_TTL = timedelta(hours=10)
 CACHE_TTL = DEFAULT_CACHE_TTL
 
@@ -344,3 +345,15 @@ def clear_export_cache(task_id, file_path, file_ctime):
     except Exception:
         log_exception(slogger.task[task_id])
         raise
+
+def get_export_formats():
+    from datumaro.components import converters
+
+    formats = [
+        EXPORT_FORMAT_DATUMARO_PROJECT,
+        EXPORT_FORMAT_DATUMARO_REMOTE_PROJECT,
+    ]
+
+    for name, _ in converters.items:
+        formats.append(name)
+    return formats
