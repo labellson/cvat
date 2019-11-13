@@ -35,7 +35,6 @@ _TASK_ANNO_EXTRACTOR = '_cvat_task_anno'
 _TASK_IMAGES_REMOTE_EXTRACTOR = 'cvat_rest_api_task_images'
 
 EXPORT_FORMAT_DATUMARO_PROJECT = "datumaro_project"
-EXPORT_FORMAT_DATUMARO_REMOTE_PROJECT = "datumaro_project_remote"
 
 class TaskProject:
     @staticmethod
@@ -208,9 +207,7 @@ class TaskProject:
     def export(self, dst_format, save_dir, save_images=False, server_url=None):
         if self._dataset is None:
             self._init_dataset()
-        if dst_format == DEFAULT_FORMAT:
-            self._dataset.save(save_dir=save_dir, save_images=save_images)
-        elif dst_format == DEFAULT_FORMAT_REMOTE:
+        if dst_format == EXPORT_FORMAT_DATUMARO_PROJECT:
             self._remote_export(save_dir=save_dir, server_url=server_url)
         else:
             self._dataset.export(output_format=dst_format,
@@ -351,7 +348,6 @@ def get_export_formats():
 
     formats = [
         EXPORT_FORMAT_DATUMARO_PROJECT,
-        EXPORT_FORMAT_DATUMARO_REMOTE_PROJECT,
     ]
 
     for name, _ in converters.items:
