@@ -7,7 +7,7 @@ import numpy as np
 AttributeEnum = Enum('AttributeType', 'checkbox text radio number select')
 class Attribute():
 
-    def __init__(self, name, input_type, values, default_value=None):
+    def __init__(self, name, input_type, values, default_value=None, **kwargs):
         """
         Describe an attribute inside the `meta` tag
 
@@ -16,13 +16,19 @@ class Attribute():
         :param values: list with values
         :param default_value: default value. If not provided `values[0]`
         """
-        assert isinstance(input_type, AttributeEnum), \
+        assert isinstance(input_type, (AttributeEnum, str)), \
             'input_type arg is not instance of AttributeEnum'
+
+        if isinstance(input_type, str):
+            input_type = AttributeEnum[input_type]
 
         self.name = name
         self.input_type = input_type
         self.values = values
-        self.default_value = values[0]
+        self.default_value = values[0] if default_value is None else default_value
+
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
     def __eq__(self, other):
         if isinstance(other, type(self)):
@@ -35,7 +41,7 @@ class Attribute():
 
 class Label():
 
-    def __init__(self, name, attributes=None):
+    def __init__(self, name, attributes=None, **kwargs):
         """
         Define a label inside the `meta` tag
 
@@ -43,7 +49,10 @@ class Label():
         :param attributes: list of attributes. [Attribute, ...]
         """
         self.name = name
-        self.attributes = attributes if attributes is not None else []
+        self.attributes = attributes if isinstance(attributes, list) else []
+
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
     def __eq__(self, other):
         if isinstance(other, type(self)):
@@ -52,6 +61,50 @@ class Label():
             return other == self.name
         else:
             return False
+
+
+class Task():
+
+    def __init__(self, id, name, size, mode, overlap, created, updated=None,
+                 bugtracker=None, flipped=False, labels=None, **kwargs):
+        """
+        Describes a task in the system. Contains metadata about the task and
+        the labels associated to it.
+
+        :param id: id of the task
+        :param name: name of the task
+        :param size: count of frames/images in the task
+        :param mode: depicts if the task is interpolation or annotation
+        :param overlap: number of overlaped frames between segments
+        :param created: date when the task was created
+        :param updated: date when the task was updated
+        :param bugtracker: URL on a page which describe the task
+        :param flipped: depicts if the images are flipped. True/False
+        :param labels: list of labels. [Label, ...]
+        """
+        self.id = int(id)
+        self.name = name
+        self.size = int(size)
+        self.mode = mode
+        self.overlap = int(overlap)
+        self.created = created
+        self.updated = updated
+        self.bugtracker = bugtracker
+        self.flipped = flipped
+        self.labels = labels if isinstance(labels, list) else []
+
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+        if isinstance(flipped, str):
+            if flipped.lower() == 'true':
+                self.flipped = True
+            elif flipped.lower() == 'false':
+                self.flipped = False
+            else:
+                raise ValueError('flipped argument is not true or false.'
+                                 '{} provided'.format(flipped))
+
 
 
 AnnotationEnum = Enum('AnnotationType', 'polygon polyline points box')
@@ -80,7 +133,7 @@ class Annotation():
         self.label = label
         self.occluded = occluded
         self.z_order = z_order
-        self.attributes = attributes if attributes is not None else []
+        self.attributes = attributes if isinstance(attributes, list) else []
 
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -114,7 +167,7 @@ class Image():
         self.name = name
         self.width = int(width)
         self.height = int(height)
-        self.annotations = annotations if annotations is not None else []
+        self.annotations = annotations if isinstance(annotations, list) else []
 
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -133,11 +186,27 @@ class CVAT_XML():
 
     def parse_xml(self, xml_file_name):
         root = etree.parse(xml_file_name).getroot()
+        self.cvat_xml_version = root.find('version').text
+
+        self._parse_metadata(root)
         self._parse_images(root)
 
     def _parse_metadata(self, root):
-        # TODO: Implement
-        return None
+        self.tasks = []
+        for task_tag in root.iter('task'):
+            task = Task(**{node.tag: node.text for node in task_tag})
+
+            for label_tag in task_tag.iter('label'):
+                label = Label(name=label_tag.find('name').text)
+
+                for attr_tag in label_tag.iter('attribute'):
+                    attr = Attribute(**{node.tag: node.text
+                                        for node in attr_tag})
+                    label.attributes.append(attr)
+
+                task.labels.append(label)
+
+            self.tasks.append(task)
 
     def _parse_images(self, root):
         self.images = []
